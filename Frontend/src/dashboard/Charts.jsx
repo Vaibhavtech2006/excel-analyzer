@@ -71,6 +71,22 @@ const Charts = () => {
     pdf.save('chart.pdf');
   };
 
+const handleUploadToDB = async () => {
+  if (!excelFile) return alert('No file selected');
+
+  const formData = new FormData();
+  formData.append('file', excelFile);
+
+  try {
+    await axios.post('http://localhost:8080/api/files/upload', formData);
+    alert('File uploaded to DB');
+  } catch (err) {
+    console.error('Upload error:', err);
+    alert('Upload failed');
+  }
+};
+
+
   const handleExcelFileChange = (e) => {
     const file = e.target.files[0];
     setExcelFile(file);
@@ -159,7 +175,19 @@ const Charts = () => {
       <main className="flex-grow flex flex-col items-center justify-center px-4 py-8">
         <h2 className="text-3xl font-bold text-purple-700 mb-4">Interactive Chart</h2>
 
-        <input type="file" accept=".xlsx,.xls" onChange={handleExcelFileChange} className="mb-4" />
+        <input
+            type="file"
+            accept=".xlsx,.xls"
+            onChange={handleExcelFileChange}
+            className="mb-4"
+          />
+
+          <button
+            onClick={handleUploadToDB}
+            className="px-5 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600 mb-4"
+          >
+            Upload File to DB
+          </button>
 
         <div className="flex gap-4 mb-4">
           <label className="text-sm font-semibold">Chart Type:</label>
