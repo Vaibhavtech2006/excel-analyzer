@@ -1,29 +1,39 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bar } from 'react-chartjs-2';
+import axios from 'axios';
+import { Bar, Line, Pie, Doughnut, Radar } from 'react-chartjs-2';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
+import * as XLSX from 'xlsx';
+
 import {
   Chart as ChartJS,
   CategoryScale,
   LinearScale,
   BarElement,
+  LineElement,
+  PointElement,
+  ArcElement,
+  RadialLinearScale,
   Title,
   Tooltip,
   Legend
 } from 'chart.js';
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
-import * as XLSX from 'xlsx';
-import axios from 'axios';
 
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
+ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, ArcElement, RadialLinearScale, Title, Tooltip, Legend);
 
 const Charts = () => {
   const navigate = useNavigate();
   const chartRef = useRef(null);
   const [chartData, setChartData] = useState(null);
+  const [chartType, setChartType] = useState('bar');
   const [dbFiles, setDbFiles] = useState([]);
   const [selectedDbFile, setSelectedDbFile] = useState('');
   const [excelFile, setExcelFile] = useState(null);
+  const [headers, setHeaders] = useState([]);
+  const [labelColumn, setLabelColumn] = useState('');
+  const [valueColumn, setValueColumn] = useState('');
+  const [parsedData, setParsedData] = useState([]);
 
   const defaultData = {
     labels: ['Sales', 'Marketing', 'HR', 'Finance', 'IT'],
@@ -64,71 +74,74 @@ const Charts = () => {
   const handleExcelFileChange = (e) => {
     const file = e.target.files[0];
     setExcelFile(file);
-  };
 
-  const handleExcelFileShow = () => {
-    if (!excelFile) return;
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       const data = new Uint8Array(e.target.result);
       const workbook = XLSX.read(data, { type: 'array' });
-      const sheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[sheetName];
-      const jsonData = XLSX.utils.sheet_to_json(worksheet);
-      const labels = jsonData.map((row) => row.Label);
-      const values = jsonData.map((row) => row.Value);
-      const dynamicData = {
-        labels,
-        datasets: [
-          {
-            label: 'Excel Data',
-            data: values,
-            backgroundColor: 'rgba(99, 102, 241, 0.7)',
-            borderRadius: 6
-          }
-        ]
-      };
-      setChartData(dynamicData);
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+      const json = XLSX.utils.sheet_to_json(sheet);
+
+      if (json.length > 0) {
+        const keys = Object.keys(json[0]);
+        setHeaders(keys);
+        setParsedData(json);
+        setLabelColumn(keys[0]);
+        setValueColumn(keys[1]);
+
+        // Upload to MongoDB
+        const formData = new FormData();
+        formData.append('file', file);
+        try {
+          await axios.post('http://localhost:8080/api/upload', formData);
+        } catch (err) {
+          console.error('Upload failed:', err);
+        }
+      }
     };
-    reader.readAsArrayBuffer(excelFile);
+    reader.readAsArrayBuffer(file);
   };
 
-  const fetchDbFiles = async () => {
-    try {
-      const res = await axios.get('http://localhost:5000/api/files');
-      setDbFiles(res.data);
-    } catch (err) {
-      console.error('Failed to fetch files from DB', err);
-    }
-  };
+  const renderSelectedChart = () => {
+    if (!labelColumn || !valueColumn || parsedData.length === 0) return;
 
-  const loadDbFile = async () => {
-    if (!selectedDbFile) return;
-    try {
-      const res = await axios.get(`http://localhost:5000/api/files/${selectedDbFile}`);
-      const jsonData = res.data;
-      const labels = jsonData.map((row) => row.Label);
-      const values = jsonData.map((row) => row.Value);
-      const dynamicData = {
-        labels,
-        datasets: [
-          {
-            label: 'Excel Data from DB',
-            data: values,
-            backgroundColor: 'rgba(99, 102, 241, 0.7)',
-            borderRadius: 6
-          }
-        ]
-      };
-      setChartData(dynamicData);
-    } catch (err) {
-      console.error('Error loading file from DB', err);
-    }
+    const labels = parsedData.map((row) => row[labelColumn]);
+    const values = parsedData.map((row) => Number(row[valueColumn]) || 0);
+
+    const dynamicData = {
+      labels,
+      datasets: [
+        {
+          label: `${valueColumn} vs ${labelColumn}`,
+          data: values,
+          backgroundColor: [
+            'rgba(99, 102, 241, 0.7)',
+            'rgba(255, 99, 132, 0.7)',
+            'rgba(54, 162, 235, 0.7)',
+            'rgba(255, 206, 86, 0.7)',
+            'rgba(75, 192, 192, 0.7)'
+          ],
+          borderRadius: 6
+        }
+      ]
+    };
+
+    setChartData(dynamicData);
   };
 
   useEffect(() => {
-    fetchDbFiles();
-  }, []);
+    renderSelectedChart();
+  }, [labelColumn, valueColumn]);
+
+  const renderChart = () => {
+    switch (chartType) {
+      case 'line': return <Line data={chartData || defaultData} options={options} />;
+      case 'pie': return <Pie data={chartData || defaultData} options={options} />;
+      case 'doughnut': return <Doughnut data={chartData || defaultData} options={options} />;
+      case 'radar': return <Radar data={chartData || defaultData} options={options} />;
+      default: return <Bar data={chartData || defaultData} options={options} />;
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-white via-blue-50 to-purple-100 flex flex-col">
@@ -146,29 +159,38 @@ const Charts = () => {
       <main className="flex-grow flex flex-col items-center justify-center px-4 py-8">
         <h2 className="text-3xl font-bold text-purple-700 mb-4">Interactive Chart</h2>
 
-        <input type="file" accept=".xlsx,.xls" onChange={handleExcelFileChange} className="mb-2" />
-        <button onClick={handleExcelFileShow} className="mb-6 px-5 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 shadow">Show Chart for Uploaded File</button>
+        <input type="file" accept=".xlsx,.xls" onChange={handleExcelFileChange} className="mb-4" />
 
-        <select
-          className="mb-2 px-4 py-2 border rounded-md"
-          value={selectedDbFile}
-          onChange={(e) => setSelectedDbFile(e.target.value)}
-        >
-          <option value="">Select File from Database</option>
-          {dbFiles.map((file) => (
-            <option key={file._id} value={file._id}>{file.name}</option>
-          ))}
-        </select>
+        <div className="flex gap-4 mb-4">
+          <label className="text-sm font-semibold">Chart Type:</label>
+          <select value={chartType} onChange={(e) => setChartType(e.target.value)} className="border px-3 py-1 rounded">
+            <option value="bar">Bar</option>
+            <option value="line">Line</option>
+            <option value="pie">Pie</option>
+            <option value="doughnut">Doughnut</option>
+            <option value="radar">Radar</option>
+          </select>
+        </div>
 
-        <button
-          onClick={loadDbFile}
-          className="mb-6 px-5 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 shadow"
-        >
-          Load Chart from DB File
-        </button>
+        {headers.length > 0 && (
+          <div className="flex gap-4 mb-4">
+            <div>
+              <label className="block text-sm mb-1">Select Label Column</label>
+              <select value={labelColumn} onChange={(e) => setLabelColumn(e.target.value)} className="border px-3 py-1 rounded">
+                {headers.map((h) => <option key={h} value={h}>{h}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm mb-1">Select Value Column</label>
+              <select value={valueColumn} onChange={(e) => setValueColumn(e.target.value)} className="border px-3 py-1 rounded">
+                {headers.map((h) => <option key={h} value={h}>{h}</option>)}
+              </select>
+            </div>
+          </div>
+        )}
 
         <div ref={chartRef} className="bg-white shadow-lg rounded-lg p-6 w-full max-w-4xl">
-          <Bar data={chartData || defaultData} options={options} />
+          {renderChart()}
         </div>
 
         <div className="mt-6 flex gap-4">

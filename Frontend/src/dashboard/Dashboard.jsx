@@ -1,9 +1,13 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaRocket } from 'react-icons/fa';
+import { useContext } from 'react';
+import { AuthContext } from '../context/AuthContext';
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const { isLoggedIn, logout } = useContext(AuthContext);
+
 
   return (
     <div className="min-h-screen flex flex-col justify-between bg-gradient-to-b from-white via-blue-50 to-purple-100">
@@ -20,25 +24,39 @@ const Dashboard = () => {
         </div>
 
         <div className="flex items-center space-x-4">
-          <button
-            onClick={() => navigate('/login')}
-            className="px-4 py-1.5 text-sm rounded-md border border-blue-600 text-blue-600 hover:bg-blue-50 transition"
-          >
-            Login
-          </button>
-          <button
-            onClick={() => navigate('/signup')}
-            className="px-4 py-1.5 text-sm rounded-md bg-blue-600 text-white hover:bg-blue-700 transition shadow"
-          >
-            Sign Up
-          </button>
-          <button
-            onClick={() => navigate('/profile')}
-            className="px-4 py-1.5 text-sm rounded-md border border-gray-400 text-gray-700 hover:bg-gray-100 transition"
-          >
-            Profile
-          </button>
-        </div>
+  {isLoggedIn ? (
+    <>
+      <button
+        onClick={() => navigate('/profile')}
+        className="px-4 py-1.5 text-sm rounded-md border border-gray-400 text-gray-700 hover:bg-gray-100 transition"
+      >
+        Profile
+      </button>
+      <button
+        onClick={logout}
+        className="px-4 py-1.5 text-sm rounded-md border border-red-500 text-red-600 hover:bg-red-100 transition"
+      >
+        Logout
+      </button>
+    </>
+  ) : (
+    <>
+      <button
+        onClick={() => navigate('/login')}
+        className="px-4 py-1.5 text-sm rounded-md border border-blue-600 text-blue-600 hover:bg-blue-50 transition"
+      >
+        Login
+      </button>
+      <button
+        onClick={() => navigate('/signup')}
+        className="px-4 py-1.5 text-sm rounded-md bg-blue-600 text-white hover:bg-blue-700 transition shadow"
+      >
+        Sign Up
+      </button>
+    </>
+  )}
+</div>
+
       </header>
 
       <main className="text-center py-16 px-4">

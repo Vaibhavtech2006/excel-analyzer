@@ -1,8 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
+import { AuthContext } from '../context/AuthContext';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 
+
+
 const Login = () => {
+  const { login } = useContext(AuthContext);
   const navigate = useNavigate();
 
   // ✅ State for input fields
@@ -20,8 +24,11 @@ const Login = () => {
       });
 
       const { token, user } = res.data;
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(user));
+      login(token, user);
+      // localStorage.setItem('token', token);
+      // localStorage.setItem('user', JSON.stringify(user));
+      // Trigger storage event manually so other components update
+      window.dispatchEvent(new Event("storage"));
       console.log('Logged in:', user);
       navigate('/profile');
     } catch (err) {
