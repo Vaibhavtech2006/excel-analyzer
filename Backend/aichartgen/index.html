@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Random Chart Generator</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <h2>Random Chart</h2>
+  <canvas id="myChart" width="400" height="200"></canvas>
+  <button onclick="loadChart()">Generate New Chart</button>
+
+  <script>
+    let chart;
+
+    async function loadChart() {
+      const res = await fetch('http://localhost:5000/api/chart-data');
+      const data = await res.json();
+
+      const ctx = document.getElementById('myChart').getContext('2d');
+
+      if (chart) chart.destroy(); // Destroy old chart
+
+      chart = new Chart(ctx, {
+        type: data.type,
+        data: {
+          labels: data.labels,
+          datasets: [{
+            label: 'Random Data',
+            data: data.data,
+            backgroundColor: ['#f87171', '#60a5fa', '#34d399', '#fbbf24', '#a78bfa'],
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: true
+        }
+      });
+    }
+
+    loadChart();
+  </script>
+</body>
+</html>
