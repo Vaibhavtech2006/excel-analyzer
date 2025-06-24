@@ -4,7 +4,7 @@ import openai
 import os
 
 # Set your OpenAI API key
-openai.api_key = os.getenv("AIzaSyD_eLLN3pz32JVHlZLexTDSbzfqEabn5U0")  # or hardcode if testing
+openai.api_key = os.getenv("yourgeminikeyhere")  # or hardcode if testing
 
 app = Flask(__name__)
 CORS(app)
